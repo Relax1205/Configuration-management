@@ -1,15 +1,19 @@
 import zipfile
 import os
 import toml
-import shutil  # Для удаления непустых директорий
+import shutil
+import tkinter as tk
+from tkinter import scrolledtext, messagebox
+
 
 class ShellEmulator:
     def __init__(self, config_path):
         self.load_config(config_path)
         self.cwd = '/'  # Текущая рабочая директория
         self.history = []  # История команд
+        self.output = []  # Список для хранения вывода
         self.load_virtual_fs()  # Загрузка виртуальной файловой системы
-        self.run_startup_script()  # Запуск стартового скрипта
+        self.current_directory = "/"
 
     def load_config(self, config_path):
         with open(config_path, 'r') as f:
@@ -21,6 +25,9 @@ class ShellEmulator:
     def load_virtual_fs(self):
         self.zip_file = zipfile.ZipFile(self.zip_path, 'r')
         self.files = self.zip_file.namelist()
+
+    def initialize(self):
+        self.run_startup_script()  # Запуск стартового скрипта после инициализации GUI
 
     def run_startup_script(self):
         try:
@@ -94,7 +101,7 @@ class ShellEmulator:
     def rm(self, path):
         full_path = os.path.join(self.cwd, path)
         try:
-            os.remove(full_path)  # Удаление файла из реальной файловой системы
+            os.remove(full_path)
             self.show_output(f"Removed file {full_path}")
         except FileNotFoundError:
             self.show_output(f"File '{full_path}' not found")
@@ -107,7 +114,7 @@ class ShellEmulator:
         full_path = os.path.join(self.cwd, path)
         try:
             if os.path.isdir(full_path):
-                shutil.rmtree(full_path)  # Удаление директории из реальной системы
+                shutil.rmtree(full_path)
                 self.show_output(f"Removed directory {full_path}")
             else:
                 self.show_output(f"Directory '{full_path}' not found")
@@ -121,21 +128,51 @@ class ShellEmulator:
 
     def exit_shell(self):
         self.show_output("Exiting shell...")
-        exit()  # Завершение программы
+        exit()
 
-    # Функция для вывода в консоль
     def show_output(self, output):
-        print(output)  # Вывод в консоль
+        self.output.append(output)
+        if hasattr(self, 'output_area'):
+            self.output_area.configure(state='normal')
+            self.output_area.insert(tk.END, output + "\n")
+            self.output_area.configure(state='disabled')
+            self.output_area.see(tk.END)  # Прокрутка к последнему выводу
 
-# Основной цикл командной строки
+    def get_output(self):
+        return "\n".join(self.output)
+
+    def clear_output(self):
+        self.output = []
+
+    def execute_gui_command(self):
+        command = self.input_area.get()
+        self.input_area.delete(0, tk.END)
+        if command.strip().lower() == "exit":
+            self.exit_shell()
+        else:
+            self.execute_command(command)
+
+
 def main():
+    # Создание главного окна
+    root = tk.Tk()
+    root.title("Shell Emulator")
+
     shell = ShellEmulator('config.toml')  # Запускаем эмулятор с заданным конфигурационным файлом
 
-    while True:
-        command = input(f"{shell.cwd} $ ")  # Запрос команды
-        if command.strip().lower() == "exit":
-            shell.exit_shell()
-        shell.execute_command(command)
+    # Настройка области вывода
+    shell.output_area = scrolledtext.ScrolledText(root, wrap=tk.WORD, state='disabled', height=20, width=50)
+    shell.output_area.pack(padx=10, pady=10)
+
+    # Настройка поля ввода
+    shell.input_area = tk.Entry(root, width=50)
+    shell.input_area.pack(padx=10, pady=10)
+    shell.input_area.bind('<Return>', lambda event: shell.execute_gui_command())  # Вызов команды по нажатию Enter
+
+    shell.initialize()  # Запуск стартового скрипта после создания GUI
+
+    root.mainloop()  # Запуск GUI
+
 
 if __name__ == '__main__':
     main()
