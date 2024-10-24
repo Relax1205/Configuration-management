@@ -1,5 +1,5 @@
 import xml.etree.ElementTree as ET
-from config_language import convert_xml_to_custom_language, ConfigSyntaxError  # Импортируйте необходимые функции и классы
+from config_language import convert_xml_to_custom_language, ConfigSyntaxError 
 
 def run_test(test_input, expected_output):
     """Запускает тест и выводит результат."""
@@ -80,7 +80,24 @@ def main():
         </root>'''
         run_test(network_config, "(define DEFAULT_PORT 8080)\nvar PORT_VAR := 8080;\n<< 192.168.1.1, 192.168.1.2 >>")
 
-        print("Все тесты выполнены успешно!")  # Сообщение о завершении тестов
+        # Тест 7: Вложенные массивы
+        nested_array_config = '''<root>
+            <array>
+                <value>1</value>
+                <value>2</value>
+                <array>
+                    <value>3</value>
+                    <value>4</value>
+                    <array>
+                        <value>5</value>
+                    </array>
+                </array>
+            </array>
+        </root>'''
+        expected_nested_output = "<< 1, 2, << 3, 4, << 5 >> >> >>"
+        run_test(nested_array_config, expected_nested_output)
+
+        print("Все тесты выполнены успешно!")  
 
     except Exception as e:
         print(f"Ошибка: {e}")
