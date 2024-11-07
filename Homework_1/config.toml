@@ -1,0 +1,8 @@
+[computer]
+name = "MyShell"
+
+[filesystem]
+path = "virtual_fs.zip"
+
+[startup]
+script = "startup_script.txt"
