@@ -1,12 +1,15 @@
 import struct
 import argparse
 import csv
+import os
 
 def load_binary(file_path):
+    """Загрузка бинарного файла с командами."""
     with open(file_path, 'rb') as file:
         return file.read()
 
 def execute_instructions(binary_data, memory, log_file):
+    """Выполнение инструкций из бинарных данных."""
     instruction_pointer = 0
 
     # Открываем лог-файл для записи
@@ -24,6 +27,7 @@ def execute_instructions(binary_data, memory, log_file):
             C = (instruction[3] << 16) | (instruction[4] << 8) | (instruction[5] & 0xFF)
             D = (instruction[5] >> 4) & 0xF  # Используется только в некоторых командах
 
+            # Обработка команд
             if op_code == 0x86:  # LOAD_CONSTANT
                 memory[B] = C
                 log_writer.writerow(["LOAD_CONSTANT", f"B={B}, C={C} -> memory[{B}] = {memory[B]}"])
@@ -46,22 +50,24 @@ def execute_instructions(binary_data, memory, log_file):
                     else:
                         memory[C + i] = 0  # Устанавливаем в 0, если делитель равен 0
 
-                log_writer.writerow(["VECTOR_REMAINDER", f"After: memory[C:C+6]={memory[C:C+6]}"])
+                    # Логирование каждой отдельной операции
+                    log_writer.writerow(["VECTOR_REMAINDER", 
+                                         f"A[{i}]={memory[A + i]}, B[{i}]={memory[B + i]}, "
+                                         f"Result memory[C + {i}]={memory[C + i]}"])
 
             # Переход к следующей команде (шаг на 6 байт)
             instruction_pointer += 6
 
-def main(assembler_output, memory_size, output_file, memory_range_start, memory_range_end):
-    # Загружаем бинарные данные из result_assembler.csv
-    binary_data = load_binary(assembler_output)
+def main(binary_file, memory_size, output_file, log_file, memory_range_start, memory_range_end):
+    """Основная функция для загрузки и выполнения инструкций."""
+    binary_data = load_binary(binary_file)
     memory = [0] * memory_size
-    log_file = 'result_interpreter.csv'
 
-    # Инициализация значений для отладки
-    memory[0:6] = [10, 15, 30, 55, 45, 100]  # Вектор делимых (увеличены значения)
-    memory[6:12] = [3, 7, 4, 8, 6, 9]        # Вектор делителей (изменены значения)
+    # Инициализация памяти для тестов
+    memory[0:6] = [10, 20, 30, 40, 50, 60]  # Инициализируем первый вектор
+    memory[6:12] = [3, 7, 4, 8, 6, 5]       # Инициализируем второй вектор
 
-    # Выполняем команды и записываем логи в result_interpreter.csv
+    # Выполняем команды и записываем логи
     execute_instructions(binary_data, memory, log_file)
 
     # Запись диапазона значений памяти в CSV файл
@@ -75,14 +81,15 @@ def main(assembler_output, memory_size, output_file, memory_range_start, memory_
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Interpreter for UVM')
-    parser.add_argument('assembler_output', help='Path to the result_assembler.csv file')
+    parser.add_argument('binary_file', help='Path to the binary file (e.g., output.bin)')
     parser.add_argument('memory_size', type=int, help='Size of the memory')
-    parser.add_argument('output_file', help='Path to the output CSV file')
+    parser.add_argument('output_file', help='Path to the result file (e.g., result_interpreter.csv)')
+    parser.add_argument('log_file', help='Path to the log file for execution (e.g., execution_log.csv)')
     parser.add_argument('memory_range_start', type=int, help='Start of memory range to save')
     parser.add_argument('memory_range_end', type=int, help='End of memory range to save')
     args = parser.parse_args()
 
     try:
-        main(args.assembler_output, args.memory_size, args.output_file, args.memory_range_start, args.memory_range_end)
+        main(args.binary_file, args.memory_size, args.output_file, args.log_file, args.memory_range_start, args.memory_range_end)
     except Exception as e:
         print(f"Error: {e}")

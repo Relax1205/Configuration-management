@@ -84,43 +84,64 @@ def load_binary(file_path):
     with open(file_path, 'rb') as file:
         return file.read()
 
-def execute_instructions(binary_data, memory):
+# Обновление для поэлементной обработки операции VECTOR_REMAINDER
+def execute_instructions(binary_data, memory, log_file):
     instruction_pointer = 0
 
-    while instruction_pointer < len(binary_data):
-        instruction = struct.unpack('>BBBBBB', binary_data[instruction_pointer:instruction_pointer + 6])
-        op_code = instruction[0]
-        A = (instruction[1] >> 4) & 0xF
-        B = ((instruction[1] & 0xF) << 8) | instruction[2]
-        C = (instruction[3] << 16) | (instruction[4] << 8) | instruction[5]
-        
-        if op_code == 0x86:  # LOAD_CONSTANT
-            memory[B] = C
-            print(f"LOAD_CONSTANT: Loaded {C} to memory[{B}]")
+    # Открываем лог-файл для записи
+    with open(log_file, 'w', newline='') as log:
+        log_writer = csv.writer(log)
+        log_writer.writerow(['Operation', 'Details'])  # Заголовок лога
 
-        elif op_code == 0xCA:  # READ_MEMORY
-            memory[B] = memory[C]
-            print(f"READ_MEMORY: Read value {memory[B]} from memory[{C}] to memory[{B}]")
+        while instruction_pointer < len(binary_data):
+            instruction = struct.unpack('>BBBBBB', binary_data[instruction_pointer:instruction_pointer + 6])
+            op_code = instruction[0]
 
-        elif op_code == 0xEC:  # WRITE_MEMORY
-            memory[C + B] = memory[D]
-            print(f"WRITE_MEMORY: Written value {memory[D]} to memory[{C + B}]")
+            # Извлечение полей команды
+            A = (instruction[1] >> 4) & 0xF
+            B = ((instruction[1] & 0xF) << 8) | instruction[2]
+            C = (instruction[3] << 16) | (instruction[4] << 8) | (instruction[5] & 0xFF)
+            D = (instruction[5] >> 4) & 0xF  # Только для определенных команд
 
-        elif op_code == 0xCE:  # VECTOR_REMAINDER
-            for i in range(6):
-                memory[C + i] = memory[A + i] % memory[B + i] if memory[B + i] != 0 else 0
-            print(f"VECTOR_REMAINDER: Remainder vector stored starting at memory[{C}]")
+            if op_code == 0x86:  # LOAD_CONSTANT
+                memory[B] = C
+                log_writer.writerow(["LOAD_CONSTANT", f"B={B}, C={C} -> memory[{B}] = {memory[B]}"])
 
-        instruction_pointer += 6
+            elif op_code == 0xCA:  # READ_MEMORY
+                memory[B] = memory[C]
+                log_writer.writerow(["READ_MEMORY", f"B={B}, C={C} -> memory[{B}] = {memory[C]}"])
+
+            elif op_code == 0xEC:  # WRITE_MEMORY
+                memory[C + B] = memory[D]
+                log_writer.writerow(["WRITE_MEMORY", f"C+B={C + B}, D={D} -> memory[{C + B}] = {memory[D]}"])
+
+            elif op_code == 0xCE:  # VECTOR_REMAINDER, поэлементное вычисление
+                log_writer.writerow(["VECTOR_REMAINDER", 
+                                     f"Before: A={A}, B={B}, C={C}, memory[A:A+6]={memory[A:A+6]}, memory[B:B+6]={memory[B:B+6]}"])
+                
+                for i in range(6):  # Поэлементное взятие остатка
+                    if memory[B + i] != 0:
+                        memory[C + i] = memory[A + i] % memory[B + i]
+                    else:
+                        memory[C + i] = 0  # Если делитель 0, результат 0
+
+                    # Логирование операции для каждого элемента
+                    log_writer.writerow(["VECTOR_REMAINDER", 
+                                         f"A[{i}]={memory[A + i]}, B[{i}]={memory[B + i]}, "
+                                         f"Result memory[C + {i}]={memory[C + i]}"])
+
+            # Переход к следующей инструкции (шаг на 6 байт)
+            instruction_pointer += 6
+
 
 def main(binary_file, memory_size, output_file):
     binary_data = load_binary(binary_file)
     memory = [0] * memory_size
 
-    memory[0:6] = [10, 20, 30, 40, 50, 60]  # Initialize first vector
-    memory[6:12] = [3, 7, 4, 8, 6, 5]       # Initialize second vector
+    memory[0:6] = [10, 20, 30, 40, 50, 60]  # Инициализация первого вектора
+    memory[6:12] = [3, 7, 4, 8, 6, 5]       # Инициализация второго вектора
 
-    execute_instructions(binary_data, memory)
+    execute_instructions(binary_data, memory, output_file)
 
     with open(output_file, 'w', newline='') as result_file:
         csv_writer = csv.writer(result_file)
@@ -152,4 +173,4 @@ if __name__ == "__main__":
         elif args.command == 'execute':
             main(args.binary_file, args.memory_size, args.output_file)
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"An error occurred: {e}")
