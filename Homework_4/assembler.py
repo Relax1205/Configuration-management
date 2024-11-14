@@ -21,10 +21,10 @@ def assemble(input_file, output_file, log_file):
         csv_reader = csv.DictReader(infile)
         for row in csv_reader:
             command = row['Command']
-            A = parse_int(row['A'])
-            B = parse_int(row['B'])
-            C = parse_int(row['C'])
-            D = parse_int(row['D'])
+            A = parse_int(row.get('A'))
+            B = parse_int(row.get('B'))
+            C = parse_int(row.get('C'))
+            D = parse_int(row.get('D'))
 
             if command == 'LOAD_CONSTANT':
                 byte1 = 0x86
@@ -34,7 +34,7 @@ def assemble(input_file, output_file, log_file):
                 byte5 = (C >> 8) & 0xFF
                 byte6 = C & 0xFF
                 instruction = struct.pack('>BBBBBB', byte1, byte2, byte3, byte4, byte5, byte6)
-                log_entries.append(["Command=LOAD_CONSTANT", f"A={A}", f"B={B}", f"C={C}"])
+                log_entries.append([command, A, B, C, ""])
 
             elif command == 'READ_MEMORY':
                 byte1 = 0xCA
@@ -44,7 +44,7 @@ def assemble(input_file, output_file, log_file):
                 byte5 = (C >> 8) & 0xFF
                 byte6 = C & 0xFF
                 instruction = struct.pack('>BBBBBB', byte1, byte2, byte3, byte4, byte5, byte6)
-                log_entries.append(["Command=READ_MEMORY", f"A={A}", f"B={B}", f"C={C}"])
+                log_entries.append([command, A, B, C, ""])
 
             elif command == 'WRITE_MEMORY':
                 byte1 = 0xEC
@@ -54,7 +54,7 @@ def assemble(input_file, output_file, log_file):
                 byte5 = (C >> 8) & 0xFF
                 byte6 = (C & 0xFF) | ((D & 0xF) << 4)
                 instruction = struct.pack('>BBBBBB', byte1, byte2, byte3, byte4, byte5, byte6)
-                log_entries.append(["Command=WRITE_MEMORY", f"A={A}", f"B={B}", f"C={C}", f"D={D}"])
+                log_entries.append([command, A, B, C, D])
 
             elif command == 'VECTOR_REMAINDER':
                 byte1 = 0xCE
@@ -64,7 +64,7 @@ def assemble(input_file, output_file, log_file):
                 byte5 = (C >> 8) & 0xFF
                 byte6 = C & 0xFF
                 instruction = struct.pack('>BBBBBB', byte1, byte2, byte3, byte4, byte5, byte6)
-                log_entries.append(["Command=VECTOR_REMAINDER", f"A={A}", f"B={B}", f"C={C}", f"D={D}"])
+                log_entries.append([command, A, B, C, D])
 
             binary_instructions.append(instruction)
 
@@ -73,7 +73,7 @@ def assemble(input_file, output_file, log_file):
         for instruction in binary_instructions:
             outfile.write(instruction)
 
-    # Запись log.csv
+    # Запись log.csv без префиксов
     with open(log_file, 'w', newline='') as logfile:
         csv_writer = csv.writer(logfile)
         csv_writer.writerows(log_entries)
