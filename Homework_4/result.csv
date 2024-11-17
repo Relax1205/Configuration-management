@@ -1,0 +1,13 @@
+Operation,Details
+LOAD_CONSTANT,memory[0] = 0
+LOAD_CONSTANT,memory[1] = 0
+READ_MEMORY,memory[2] = memory[0] (0)
+READ_MEMORY,Error: Address C=256 or B=3 out of memory bounds.
+WRITE_MEMORY,memory[8] = memory[0] (0)
+WRITE_MEMORY,memory[10] = memory[1] (0)
+REMAINDER,memory[0] (0) % memory[0] (0) = memory[12] (0)
+REMAINDER,memory[0] (0) % memory[0] (0) = memory[14] (0)
+LOAD_CONSTANT,memory[8] = 0
+LOAD_CONSTANT,memory[9] = 0
+REMAINDER,memory[0] (0) % memory[0] (0) = memory[20] (0)
+REMAINDER,memory[0] (0) % memory[0] (0) = memory[22] (0)

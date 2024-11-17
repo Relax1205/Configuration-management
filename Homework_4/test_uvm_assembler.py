@@ -42,8 +42,8 @@ def test_write_memory():
     assert result == expected, f"WRITE_MEMORY failed: got {result}, expected {expected}"
     print("Test WRITE_MEMORY passed")
 
-def test_vector_remainder():
-    # Test for VECTOR_REMAINDER: A=14, B=92, C=42, D=57, E=33, expected output: 0xCE, 0xE5, 0x5C, 0x00, 0x00, 0x2A
+def test_remainder():
+    # Test for REMAINDER: A=14, B=92, C=42, D=57, expected output: 0xCE, 0xE5, 0x5C, 0x00, 0x00, 0x2A
     A, B, C, D = 14, 92, 42, 57
     byte1 = 0xCE
     byte2 = (A << 4) | ((B >> 4) & 0xF)
@@ -53,15 +53,15 @@ def test_vector_remainder():
     byte6 = C & 0xFF
     result = struct.pack('>BBBBBB', byte1, byte2, byte3, byte4, byte5, byte6)
     expected = bytes([0xCE, 0xE5, 0x5C, 0x00, 0x00, 0x2A])
-    assert result == expected, f"VECTOR_REMAINDER failed: got {result}, expected {expected}"
-    print("Test VECTOR_REMAINDER passed")
+    assert result == expected, f"REMAINDER failed: got {result}, expected {expected}"
+    print("Test REMAINDER passed")
     
 def run_tests():
     print("Running tests...")
     test_load_constant()
     test_read_memory()
     test_write_memory()
-    test_vector_remainder()
+    test_remainder()
     print("All tests passed successfully.")
 
 if __name__ == "__main__":

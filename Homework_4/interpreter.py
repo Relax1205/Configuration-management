@@ -5,6 +5,8 @@ import os
 
 def load_binary(file_path):
     """Загрузка бинарного файла с командами."""
+    if not os.path.isfile(file_path):
+        raise FileNotFoundError(f"Binary file '{file_path}' not found.")
     with open(file_path, 'rb') as file:
         return file.read()
 
@@ -12,81 +14,108 @@ def execute_instructions(binary_data, memory, log_file):
     """Выполнение инструкций из бинарных данных."""
     instruction_pointer = 0
 
-    # Открываем лог-файл для записи
-    with open(log_file, 'w', newline='') as log:
+    with open(log_file, 'w', newline='', encoding='utf-8') as log:
         log_writer = csv.writer(log)
         log_writer.writerow(['Operation', 'Details'])  # Заголовок для логов
 
         while instruction_pointer < len(binary_data):
+            # Проверка, что осталось как минимум 6 байт для инструкции
+            if instruction_pointer + 6 > len(binary_data):
+                log_writer.writerow(["ERROR", "Incomplete instruction at the end of binary data."])
+                break
+
             instruction = struct.unpack('>BBBBBB', binary_data[instruction_pointer:instruction_pointer + 6])
             op_code = instruction[0]
-            
+
             # Извлечение полей команды
             A = (instruction[1] >> 4) & 0xF
-            B = ((instruction[1] & 0xF) << 8) | instruction[2]
-            C = (instruction[3] << 16) | (instruction[4] << 8) | (instruction[5] & 0xFF)
-            D = (instruction[5] >> 4) & 0xF  # Используется только в некоторых командах
+            B = ((instruction[1] & 0xF) << 2) | ((instruction[2] >> 6) & 0x3)
+            C = ((instruction[2] & 0x3F) << 16) | (instruction[3] << 8) | instruction[4]
+            D = (instruction[5] >> 4) & 0xF
+            E = instruction[5] & 0xF
 
-            # Обработка команд
             if op_code == 0x86:  # LOAD_CONSTANT
-                memory[B] = C
-                log_writer.writerow(["LOAD_CONSTANT", f"B={B}, C={C} -> memory[{B}] = {memory[B]}"])
+                if B >= len(memory):
+                    log_writer.writerow(["LOAD_CONSTANT", f"Error: Address B={B} out of memory bounds."])
+                else:
+                    memory[B] = C
+                    log_writer.writerow(["LOAD_CONSTANT", f"memory[{B}] = {C}"])
 
             elif op_code == 0xCA:  # READ_MEMORY
-                memory[B] = memory[C]
-                log_writer.writerow(["READ_MEMORY", f"B={B}, C={C} -> memory[{B}] = {memory[C]}"])
+                if C >= len(memory) or B >= len(memory):
+                    log_writer.writerow(["READ_MEMORY", f"Error: Address C={C} or B={B} out of memory bounds."])
+                else:
+                    memory[B] = memory[C]
+                    log_writer.writerow(["READ_MEMORY", f"memory[{B}] = memory[{C}] ({memory[C]})"])
 
             elif op_code == 0xEC:  # WRITE_MEMORY
-                memory[C + B] = memory[D]
-                log_writer.writerow(["WRITE_MEMORY", f"C+B={C + B}, D={D} -> memory[{C + B}] = {memory[D]}"])
+                target_address = C + B
+                if target_address >= len(memory) or D >= len(memory):
+                    log_writer.writerow(["WRITE_MEMORY", f"Error: Address C+B={target_address} or D={D} out of memory bounds."])
+                else:
+                    memory[target_address] = memory[D]
+                    log_writer.writerow(["WRITE_MEMORY", f"memory[{target_address}] = memory[{D}] ({memory[D]})"])
 
-            elif op_code == 0xCE:  # VECTOR_REMAINDER
-                log_writer.writerow(["VECTOR_REMAINDER", 
-                                     f"Before: A={A}, B={B}, C={C}, memory[A:A+6]={memory[A:A+6]}, memory[B:B+6]={memory[B:B+6]}"])
-                
-                for i in range(6):
-                    if memory[B + i] != 0:
-                        memory[C + i] = memory[A + i] % memory[B + i]
+            elif op_code == 0xCE:  # REMAINDER
+                # Выполняем: memory[C + B] = memory[memory[D]] % memory[E]
+                if C + B >= len(memory) or D >= len(memory) or E >= len(memory):
+                    log_writer.writerow(["REMAINDER", f"Error: Address C+B={C+B}, D={D}, or E={E} out of memory bounds."])
+                else:
+                    addr_d = memory[D]
+                    addr_e = memory[E]
+                    result_address = C + B
+
+                    if addr_d >= len(memory) or addr_e >= len(memory) or result_address >= len(memory):
+                        log_writer.writerow(["REMAINDER", f"Error: Nested address memory[{D}]={addr_d}, memory[{E}]={addr_e} out of bounds."])
                     else:
-                        memory[C + i] = 0  # Устанавливаем в 0, если делитель равен 0
+                        operand1 = memory[addr_d]
+                        operand2 = memory[addr_e]
+                        if operand2 != 0:
+                            result = operand1 % operand2
+                        else:
+                            result = 0  # Если делитель равен 0, результат 0
+                        memory[result_address] = result
+                        log_writer.writerow([
+                            "REMAINDER",
+                            f"memory[{addr_d}] ({operand1}) % memory[{addr_e}] ({operand2}) = memory[{result_address}] ({result})"
+                        ])
 
-                    # Логирование каждой отдельной операции
-                    log_writer.writerow(["VECTOR_REMAINDER", 
-                                         f"A[{i}]={memory[A + i]}, B[{i}]={memory[B + i]}, "
-                                         f"Result memory[C + {i}]={memory[C + i]}"])
+            else:
+                log_writer.writerow(["UNKNOWN_COMMAND", f"Op code {op_code} at address {instruction_pointer} is not recognized."])
 
-            # Переход к следующей команде (шаг на 6 байт)
+            # Переход к следующей инструкции (шаг на 6 байт)
             instruction_pointer += 6
+
+def save_memory_range(memory, start, end, output_file):
+    """Сохранение диапазона памяти в CSV файл."""
+    if start < 0 or end >= len(memory) or start > end:
+        raise ValueError(f"Invalid memory range: start={start}, end={end}, memory size={len(memory)}.")
+
+    with open(output_file, 'w', newline='', encoding='utf-8') as result_file:
+        csv_writer = csv.writer(result_file)
+        csv_writer.writerow(['Address', 'Value'])  # Заголовок
+        for i in range(start, end + 1):
+            csv_writer.writerow([i, memory[i]])
+
+    print(f"Memory values from {start} to {end} have been saved to '{output_file}'.")
 
 def main(binary_file, memory_size, output_file, log_file, memory_range_start, memory_range_end):
     """Основная функция для загрузки и выполнения инструкций."""
     binary_data = load_binary(binary_file)
     memory = [0] * memory_size
 
-    # Инициализация памяти для тестов
-    memory[0:6] = [10, 20, 30, 40, 50, 60]  # Инициализируем первый вектор
-    memory[6:12] = [3, 7, 4, 8, 6, 5]       # Инициализируем второй вектор
-
-    # Выполняем команды и записываем логи
     execute_instructions(binary_data, memory, log_file)
-
-    # Запись диапазона значений памяти в CSV файл
-    with open(output_file, 'w', newline='') as result_file:
-        csv_writer = csv.writer(result_file)
-        csv_writer.writerow(['Address', 'Value'])  # Заголовок
-        for i in range(memory_range_start, memory_range_end + 1):
-            csv_writer.writerow([i, memory[i]])
-
-    print(f"Memory values from {memory_range_start} to {memory_range_end} have been saved to {output_file}.")
+    save_memory_range(memory, memory_range_start, memory_range_end, output_file)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Interpreter for UVM')
     parser.add_argument('binary_file', help='Path to the binary file (e.g., output.bin)')
     parser.add_argument('memory_size', type=int, help='Size of the memory')
-    parser.add_argument('output_file', help='Path to the result file (e.g., result_interpreter.csv)')
-    parser.add_argument('log_file', help='Path to the log file for execution (e.g., execution_log.csv)')
+    parser.add_argument('output_file', help='Path to the result file (CSV)')
+    parser.add_argument('log_file', help='Path to the execution log file (CSV)')
     parser.add_argument('memory_range_start', type=int, help='Start of memory range to save')
     parser.add_argument('memory_range_end', type=int, help='End of memory range to save')
+
     args = parser.parse_args()
 
     try:
