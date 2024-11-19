@@ -10,7 +10,7 @@ def load_binary(file_path):
     with open(file_path, 'rb') as file:
         return file.read()
 
-def execute_instructions(binary_data, memory, log_file):
+def execute_instructions(binary_data, regs, log_file):
     """Выполнение инструкций из бинарных данных."""
     instruction_pointer = 0
 
@@ -35,49 +35,49 @@ def execute_instructions(binary_data, memory, log_file):
             E = instruction[5] & 0xF
 
             if op_code == 0x86:  # LOAD_CONSTANT
-                if B >= len(memory):
+                if B >= len(regs):
                     log_writer.writerow(["LOAD_CONSTANT", f"Error: Address B={B} out of memory bounds."])
                 else:
-                    memory[B] = C
-                    log_writer.writerow(["LOAD_CONSTANT", f"memory[{B}] = {C}"])
+                    regs[B] = C
+                    log_writer.writerow(["LOAD_CONSTANT", f"regs[{B}] = {C}"])
 
             elif op_code == 0xCA:  # READ_MEMORY
-                if C >= len(memory) or B >= len(memory):
+                if C >= len(regs) or B >= len(regs):
                     log_writer.writerow(["READ_MEMORY", f"Error: Address C={C} or B={B} out of memory bounds."])
                 else:
-                    memory[B] = memory[C]
-                    log_writer.writerow(["READ_MEMORY", f"memory[{B}] = memory[{C}] ({memory[C]})"])
+                    regs[B] = regs[C]
+                    log_writer.writerow(["READ_MEMORY", f"regs[{B}] = regs[{C}] ({regs[C]})"])
 
             elif op_code == 0xEC:  # WRITE_MEMORY
                 target_address = C + B
-                if target_address >= len(memory) or D >= len(memory):
+                if target_address >= len(regs) or D >= len(regs):
                     log_writer.writerow(["WRITE_MEMORY", f"Error: Address C+B={target_address} or D={D} out of memory bounds."])
                 else:
-                    memory[target_address] = memory[D]
-                    log_writer.writerow(["WRITE_MEMORY", f"memory[{target_address}] = memory[{D}] ({memory[D]})"])
+                    regs[target_address] = regs[D]
+                    log_writer.writerow(["WRITE_MEMORY", f"regs[{target_address}] = regs[{D}] ({regs[D]})"])
 
             elif op_code == 0xCE:  # REMAINDER
-                # Выполняем: memory[C + B] = memory[memory[D]] % memory[E]
-                if C + B >= len(memory) or D >= len(memory) or E >= len(memory):
+                # Выполняем: regs[C + B] = regs[regs[D]] % regs[E]
+                if C + B >= len(regs) or D >= len(regs) or E >= len(regs):
                     log_writer.writerow(["REMAINDER", f"Error: Address C+B={C+B}, D={D}, or E={E} out of memory bounds."])
                 else:
-                    addr_d = memory[D]
-                    addr_e = memory[E]
+                    addr_d = regs[D]
+                    addr_e = regs[E]
                     result_address = C + B
 
-                    if addr_d >= len(memory) or addr_e >= len(memory) or result_address >= len(memory):
-                        log_writer.writerow(["REMAINDER", f"Error: Nested address memory[{D}]={addr_d}, memory[{E}]={addr_e} out of bounds."])
+                    if addr_d >= len(regs) or addr_e >= len(regs) or result_address >= len(regs):
+                        log_writer.writerow(["REMAINDER", f"Error: Nested address regs[{D}]={addr_d}, regs[{E}]={addr_e} out of bounds."])
                     else:
-                        operand1 = memory[addr_d]
-                        operand2 = memory[addr_e]
+                        operand1 = regs[addr_d]
+                        operand2 = regs[addr_e]
                         if operand2 != 0:
                             result = operand1 % operand2
                         else:
                             result = 0  # Если делитель равен 0, результат 0
-                        memory[result_address] = result
+                        regs[result_address] = result
                         log_writer.writerow([
                             "REMAINDER",
-                            f"memory[{addr_d}] ({operand1}) % memory[{addr_e}] ({operand2}) = memory[{result_address}] ({result})"
+                            f"regs[{addr_d}] ({operand1}) % regs[{addr_e}] ({operand2}) = regs[{result_address}] ({result})"
                         ])
 
             else:
@@ -86,39 +86,39 @@ def execute_instructions(binary_data, memory, log_file):
             # Переход к следующей инструкции (шаг на 6 байт)
             instruction_pointer += 6
 
-def save_memory_range(memory, start, end, output_file):
-    """Сохранение диапазона памяти в CSV файл."""
-    if start < 0 or end >= len(memory) or start > end:
-        raise ValueError(f"Invalid memory range: start={start}, end={end}, memory size={len(memory)}.")
+def save_regs_range(regs, start, end, output_file):
+    """Сохранение диапазона регистров в CSV файл."""
+    if start < 0 or end >= len(regs) or start > end:
+        raise ValueError(f"Invalid register range: start={start}, end={end}, regs size={len(regs)}.")
 
     with open(output_file, 'w', newline='', encoding='utf-8') as result_file:
         csv_writer = csv.writer(result_file)
         csv_writer.writerow(['Address', 'Value'])  # Заголовок
         for i in range(start, end + 1):
-            csv_writer.writerow([i, memory[i]])
+            csv_writer.writerow([i, regs[i]])
 
-    print(f"Memory values from {start} to {end} have been saved to '{output_file}'.")
+    print(f"Regs values from {start} to {end} have been saved to '{output_file}'.")
 
-def main(binary_file, memory_size, output_file, log_file, memory_range_start, memory_range_end):
+def main(binary_file, regs_size, output_file, log_file, regs_range_start, regs_range_end):
     """Основная функция для загрузки и выполнения инструкций."""
     binary_data = load_binary(binary_file)
-    memory = [0] * memory_size
+    regs = [0] * regs_size
 
-    execute_instructions(binary_data, memory, log_file)
-    save_memory_range(memory, memory_range_start, memory_range_end, output_file)
+    execute_instructions(binary_data, regs, log_file)
+    save_regs_range(regs, regs_range_start, regs_range_end, output_file)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Interpreter for UVM')
     parser.add_argument('binary_file', help='Path to the binary file (e.g., output.bin)')
-    parser.add_argument('memory_size', type=int, help='Size of the memory')
+    parser.add_argument('regs_size', type=int, help='Size of the regs')
     parser.add_argument('output_file', help='Path to the result file (CSV)')
     parser.add_argument('log_file', help='Path to the execution log file (CSV)')
-    parser.add_argument('memory_range_start', type=int, help='Start of memory range to save')
-    parser.add_argument('memory_range_end', type=int, help='End of memory range to save')
+    parser.add_argument('regs_range_start', type=int, help='Start of regs range to save')
+    parser.add_argument('regs_range_end', type=int, help='End of regs range to save')
 
     args = parser.parse_args()
 
     try:
-        main(args.binary_file, args.memory_size, args.output_file, args.log_file, args.memory_range_start, args.memory_range_end)
+        main(args.binary_file, args.regs_size, args.output_file, args.log_file, args.regs_range_start, args.regs_range_end)
     except Exception as e:
         print(f"Error: {e}")
