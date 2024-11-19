@@ -1,13 +1,5 @@
-Operation,Details
-LOAD_CONSTANT,regs[0] = 0
-LOAD_CONSTANT,regs[1] = 0
-READ_MEMORY,regs[2] = regs[0] (0)
-READ_MEMORY,regs[3] = regs[256] (0)
-WRITE_MEMORY,regs[8] = regs[0] (0)
-WRITE_MEMORY,regs[10] = regs[1] (0)
-REMAINDER,regs[0] (0) % regs[0] (0) = regs[12] (0)
-REMAINDER,regs[0] (0) % regs[0] (0) = regs[14] (0)
-LOAD_CONSTANT,regs[8] = 0
-LOAD_CONSTANT,regs[9] = 0
-REMAINDER,regs[0] (0) % regs[0] (0) = regs[20] (0)
-REMAINDER,regs[0] (0) % regs[0] (0) = regs[22] (0)
+Command,Opcode,Bytes
+LOAD_CONST,6,06 00 28 00 00 03 23
+READ_MEM,10,0A 00 1C 00 00 03 A6
+WRITE_MEM,12,0C 00 2E 1F 3C
+MODULO,14,0E 00 5C 2A 39 21
