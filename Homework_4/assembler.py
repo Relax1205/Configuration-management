@@ -18,6 +18,9 @@ def assemble_csv(input_csv, output_file, log_file):
 
         for row in reader:
             command = row["Command"]
+            if command not in COMMANDS:
+                raise ValueError(f"Unknown command: {command}")
+            
             opcode = COMMANDS[command]
 
             # Собираем байты команды
@@ -26,7 +29,6 @@ def assemble_csv(input_csv, output_file, log_file):
                 data = struct.pack(">BHI", opcode, b, c)
             elif command == "READ_MEM":
                 b, c = int(row["Arg1"]), int(row["Arg2"])
-                # Изменяем формат упаковки на >BHH
                 data = struct.pack(">BHH", opcode, b, c)
             elif command == "WRITE_MEM":
                 b, c, d = int(row["Arg1"]), int(row["Arg2"]), int(row["Arg3"])
@@ -44,25 +46,26 @@ def run_tests():
     tests = [
         {
             "command": "LOAD_CONST",
-            "args": (40, 803),
+            "args": (6, 40, 803),
             "expected": b"\x06\x00\x28\x00\x00\x03\x23"
         },
         {
             "command": "READ_MEM",
-            "args": (28, 934),
-            "expected": b"\x0A\x00\x1C\x03\xA6"  # Аргумент C — два байта
+            "args": (10, 28, 934),
+            "expected": b"\x0A\x00\x1C\x03\xA6"
         },
         {
             "command": "WRITE_MEM",
-            "args": (46, 31, 60),
+            "args": (12, 46, 31, 60),
             "expected": b"\x0C\x00\x2E\x1F\x3C"
         },
         {
             "command": "MODULO",
-            "args": (92, 42, 57, 33),
+            "args": (14, 92, 42, 57, 33),
             "expected": b"\x0E\x00\x5C\x2A\x39\x21"
         }
     ]
+
     
     for i, test in enumerate(tests, 1):
         command = test["command"]
@@ -72,14 +75,13 @@ def run_tests():
         opcode = COMMANDS[command]
         
         if command == "LOAD_CONST":
-            data = struct.pack(">BHI", opcode, args[0], args[1])
+            data = struct.pack(">BHI", opcode, args[1], args[2])
         elif command == "READ_MEM":
-            # Упаковка с >BHH для READ_MEM
-            data = struct.pack(">BHH", opcode, args[0], args[1])
+            data = struct.pack(">BHH", opcode, args[1], args[2])
         elif command == "WRITE_MEM":
-            data = struct.pack(">BHBB", opcode, args[0], args[1], args[2])
+            data = struct.pack(">BHBB", opcode, args[1], args[2], args[3])
         elif command == "MODULO":
-            data = struct.pack(">BHBBB", opcode, args[0], args[1], args[2], args[3])
+            data = struct.pack(">BHBBB", opcode, args[1], args[2], args[3], args[4])
         else:
             raise ValueError(f"Unknown command: {command}")
         
@@ -90,7 +92,6 @@ def run_tests():
         print(f"Test {i} passed for {command}. Output: {data.hex()}")
 
 if __name__ == "__main__":
-    # Автоматический запуск тестов
     print("Running tests...")
     try:
         run_tests()
