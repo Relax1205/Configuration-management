@@ -6,22 +6,22 @@ def run_tests():
         {
             "command": "LOAD_CONST",
             "args": (6, 40, 803),
-            "expected": b"\x06\x00\x28\x00\x00\x03\x23"
+            "expected": b"\x86\x8E\x0C\x00\x00\x00"
         },
         {
             "command": "READ_MEM",
             "args": (10, 28, 934),
-            "expected": b"\x0A\x00\x1C\x03\xA6"
+            "expected": b"\xCA\x99\x0E\x00\x00\x00"
         },
         {
             "command": "WRITE_MEM",
             "args": (12, 46, 31, 60),
-            "expected": b"\x0C\x00\x2E\x1F\x3C"
+            "expected": b"\xEC\xFA\x78\x00\x00\x00"
         },
         {
             "command": "MODULO",
             "args": (14, 92, 42, 57, 33),
-            "expected": b"\x0E\x00\x5C\x2A\x39\x21"
+            "expected": b"\xCE\x55\xF3\x10\x00\x00"
         }
     ]
     
@@ -33,13 +33,17 @@ def run_tests():
         opcode = COMMANDS[command]
         
         if command == "LOAD_CONST":
-            data = struct.pack(">BHI", opcode, args[1], args[2])
+            # A + B + C -> Specific byte encoding logic
+            data = struct.pack(">BBBHI", opcode, args[0], args[1], args[2], 0)
         elif command == "READ_MEM":
-            data = struct.pack(">BHH", opcode, args[1], args[2])
+            # A + B + C -> Specific byte encoding logic
+            data = struct.pack(">BBBHH", opcode, args[0], args[1], args[2], 0)
         elif command == "WRITE_MEM":
-            data = struct.pack(">BHBB", opcode, args[1], args[2], args[3])
+            # A + B + C + D -> Specific byte encoding logic
+            data = struct.pack(">BBBHHB", opcode, args[0], args[1], args[2], args[3], 0)
         elif command == "MODULO":
-            data = struct.pack(">BHBBB", opcode, args[1], args[2], args[3], args[4])
+            # A + B + C + D + E -> Specific byte encoding logic
+            data = struct.pack(">BBBHHBB", opcode, args[0], args[1], args[2], args[3], args[4], 0)
         else:
             raise ValueError(f"Unknown command: {command}")
         

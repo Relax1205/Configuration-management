@@ -20,7 +20,7 @@ def assemble_csv(input_csv, output_file, log_file):
             command = row["Command"]
             if command not in COMMANDS:
                 raise ValueError(f"Unknown command: {command}")
-            
+
             opcode = COMMANDS[command]
 
             # Собираем байты команды
@@ -39,9 +39,9 @@ def assemble_csv(input_csv, output_file, log_file):
             else:
                 raise ValueError(f"Unknown command: {command}")
 
+            print(f"Command: {command}, Opcode: {opcode}, Data: {data}")  # Debug print
             binfile.write(data)
             log_writer.writerow([command, opcode, " ".join(f"{byte:02X}" for byte in data)])
-
 
 if __name__ == "__main__":
     assemble_csv(sys.argv[1], sys.argv[2], sys.argv[3])

@@ -35,7 +35,7 @@
 Для сборки текстовой программы в бинарный файл выполните следующую команду:
 
 ```bash
-python assembler.py assemble input.csv output.bin result_assembler.csv
+python assembler.py input.csv output.bin result_assembler.csv
 ```
 
 При успешном выполнении:
@@ -45,12 +45,12 @@ python assembler.py assemble input.csv output.bin result_assembler.csv
 Для выполнения скомпилированной программы и сохранения результатов в result_interpreter.csv:
 
 ```bash
-python interpreter.py execute output.bin <размер_памяти> result_interpreter.csv <начало_диапазона> <конец_диапазона>
+python interpreter.py output.bin <размер_памяти> result_interpreter.csv <начало_диапазона> <конец_диапазона>
 ```
 
 Например, чтобы выполнить файл output.bin с объемом памяти 18 и сохранить значения с 12 по 17:
 ```bash
-python interpreter.py execute output.bin 18 result_interpreter.csv 12 17
+python interpreter.py output.bin result_interpreter.csv 100-150
 ```
 
 При успешном выполнении:
@@ -68,4 +68,5 @@ python vector_modulo.py
 Скрипт test_uvm_assembler.py содержит тесты для команд LOAD_CONSTANT, READ_MEMORY, WRITE_MEMORY, и REMAINDER. Он проверяет правильность формата бинарных инструкций для этих команд.
 
 ### Результаты тестирования
-![Скриншот результата](photo/Снимок%20экрана%202024-11-05%20151044.png)
+![Скриншот результата](photo/Без%20имени.png)
+![Скриншот результата](photo/Снимок%20экрана%202024-11-25%20150754.png)
