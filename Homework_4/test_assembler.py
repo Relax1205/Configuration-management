@@ -1,72 +1,44 @@
-from assembler import serializer
+from assembler import assembler
 
 def test_load_const():
-    """
-    Загрузка константы
-    Тест (A=6, B=40, C=803): 
-    0x86, 0x8E, 0x0C, 0x00, 0x00, 0x00
-    """
-    cmd = 6
-    fields = ((40, 4), (803, 10))
-    size = 6
-    bytes = serializer(cmd, fields, size)
-    expected = b'\x86\x8E\x0C\x00\x00\x00'
-    assert bytes == expected, f"Expected {expected.hex()}, got {bytes.hex()}"
-    print("Test LOAD_CONST passed!")
-
+    instructions = [
+        ("load_const", 40, 803)  # Пример: Загрузка константы
+    ]
+    expected_bytes = bytes([0x86, 0x8E, 0x0C, 0x00, 0x00, 0x00])
+    result = assembler(instructions)
+    assert result == list(expected_bytes), f"Test load_const failed. Expected {expected_bytes}, got {bytes(result)}"
+    print("Test load_const passed.")
 
 def test_read_mem():
-    """
-    Чтение значения из памяти
-    Тест (A=10, B=28, C=934): 
-    0xCA, 0x99, 0x0E, 0x00, 0x00, 0x00
-    """
-    cmd = 10
-    fields = ((28, 4), (934, 10))
-    size = 6
-    bytes = serializer(cmd, fields, size)
-    expected = b'\xCA\x99\x0E\x00\x00\x00'
-    assert bytes == expected, f"Expected {expected.hex()}, got {bytes.hex()}"
-    print("Test READ_MEM passed!")
-
+    instructions = [
+        ("read_mem", 28, 934)  # Пример: Чтение значения из памяти
+    ]
+    expected_bytes = bytes([0xCA, 0x99, 0x0E, 0x00, 0x00, 0x00])
+    result = assembler(instructions)
+    assert result == list(expected_bytes), f"Test read_mem failed. Expected {expected_bytes}, got {bytes(result)}"
+    print("Test read_mem passed.")
 
 def test_write_mem():
-    """
-    Запись значения в память
-    Тест (A=12, B=46, C=31, D=60): 
-    0xEC, 0xFA, 0x78, 0x00, 0x00, 0x00
-    """
-    cmd = 12
-    fields = ((46, 4), (31, 11), (60, 17))
-    size = 6
-    bytes = serializer(cmd, fields, size)
-    expected = b'\xEC\xFA\x78\x00\x00\x00'
-    assert bytes == expected, f"Expected {expected.hex()}, got {bytes.hex()}"
-    print("Test WRITE_MEM passed!")
+    instructions = [
+        ("write_mem", 46, 31, 60)  # Пример: Запись значения в память
+    ]
+    expected_bytes = bytes([0xEC, 0xFA, 0x78, 0x00, 0x00, 0x00])
+    result = assembler(instructions)
+    assert result == list(expected_bytes), f"Test write_mem failed. Expected {expected_bytes}, got {bytes(result)}"
+    print("Test write_mem passed.")
 
-
-def test_modulo():
-    """
-    Бинарная операция: взятие остатка
-    Тест (A=14, B=92, C=42, D=57, E=33): 
-    0xCE, 0x55, 0xF3, 0x10, 0x00, 0x00
-    """
-    cmd = 14
-    fields = ((92, 4), (42, 11), (57, 17), (33, 23))
-    size = 6
-    bytes = serializer(cmd, fields, size)
-    expected = b'\xCE\x55\xF3\x10\x00\x00'
-    assert bytes == expected, f"Expected {expected.hex()}, got {bytes.hex()}"
-    print("Test MODULO passed!")
-
+def test_mod_mem():
+    instructions = [
+        ("mod_mem", 92, 42, 57, 33)  # Пример: Бинарная операция (взятие остатка)
+    ]
+    expected_bytes = bytes([0xCE, 0x55, 0xF3, 0x10, 0x00, 0x00])
+    result = assembler(instructions)
+    assert result == list(expected_bytes), f"Test mod_mem failed. Expected {expected_bytes}, got {bytes(result)}"
+    print("Test mod_mem passed.")
 
 if __name__ == "__main__":
-    print("Running tests for UVM assembler...")
-    try:
-        test_load_const()
-        test_read_mem()
-        test_write_mem()
-        test_modulo()
-        print("All tests passed!")
-    except AssertionError as e:
-        print(e)
+    test_load_const()
+    test_read_mem()
+    test_write_mem()
+    test_mod_mem()
+    print("All tests passed successfully!")

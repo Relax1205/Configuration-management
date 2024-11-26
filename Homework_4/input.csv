@@ -1,4 +1,4 @@
-load_const 40 803
-read_mem 28 934
-write_mem 46 31 60
-modulo 92 42 57 33
+load_const,8,803
+write_mem,10,8,8
+load_const,7,1
+mod_mem,8,8,10,7

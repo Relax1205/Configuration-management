@@ -1,5 +1,5 @@
-Operation code, Arg1, Arg2, Arg3, Arg4
-A=6, Arg1=40, Arg2=803
-A=10, Arg1=28, Arg2=934
-A=12, Arg1=46, Arg2=31, Arg3=60
-A=14, Arg1=92, Arg2=42, Arg3=57, Arg4=33
+Operation code,Constant/Address,Address
+A=6,B=8,C=803
+A=12,B=10,C=8
+A=6,B=7,C=1
+A=14,B=8,C=8
