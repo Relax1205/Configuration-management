@@ -1,7 +1,4 @@
-Command,Arg1,Arg2,Arg3,Arg4
-LOAD_CONST,31,100,,
-LOAD_CONST,60,200,,
-WRITE_MEM,46,31,60,
-LOAD_CONST,57,300,,
-LOAD_CONST,33,5,,
-MODULO,92,31,57,33
+load_const 40 803
+read_mem 28 934
+write_mem 46 31 60
+modulo 92 42 57 33

@@ -1,129 +1,86 @@
-import csv
+import argparse
 import struct
-import sys
 
-class VirtualMachine:
-    def __init__(self, memory_size=1024):
-        self.memory = [0] * memory_size
-        self.registers = [0] * 64
-
-    def execute(self, opcode, args):
-        if opcode == 6:  # LOAD_CONST
-            b, c = args
-            if not (0 <= b < len(self.registers)):
-                print(f"Error: Register {b} out of range.")
-                return
-            self.registers[b] = c
-            print(f"LOAD_CONST: Register[{b}] = {c}")
-        elif opcode == 10:  # READ_MEM
-            b, c = args
-            if not (0 <= b < len(self.registers)):
-                print(f"Error: Register {b} out of range.")
-                return
-            if not (0 <= c < len(self.memory)):
-                print(f"Error: Memory address {c} out of range.")
-                return
-            self.registers[b] = self.memory[c]
-            print(f"READ_MEM: Register[{b}] = Memory[{c}] = {self.memory[c]}")
-        elif opcode == 12:  # WRITE_MEM
-            b, c, d = args
-            if not (0 <= c < len(self.registers)) or not (0 <= d < len(self.registers)):
-                print(f"Error: Register {c} or {d} out of range.")
-                return
-            addr = self.registers[c] + b
-            if not (0 <= addr < len(self.memory)):
-                print(f"Error: Memory address {addr} out of range.")
-                return
-            self.memory[addr] = self.registers[d]
-            print(f"WRITE_MEM: Memory[{addr}] = Register[{d}] = {self.registers[d]}")
-        elif opcode == 14:  # MODULO
-            b, c, d, e = args
-            if not (0 <= c < len(self.registers)) or not (0 <= d < len(self.registers)) or not (0 <= e < len(self.registers)):
-                print(f"Error: Register {c}, {d} или {e} out of range.")
-                return
-            addr = self.registers[c] + b
-            if not (0 <= addr < len(self.memory)):
-                print(f"Error: Memory address {addr} out of range.")
-                return
-            if self.registers[e] == 0:
-                print("Error: Division by zero in MODULO operation.")
-                return
-            result = self.memory[self.registers[d]] % self.registers[e]
-            self.memory[addr] = result
-            print(f"MODULO: Memory[{addr}] = {result} (result of {self.memory[self.registers[d]]} % {self.registers[e]})")
+def execute_command(opcode, args, memory, registers):
+    if opcode == 6:  # LOAD_CONST
+        B, C = args
+        print(f"LOAD_CONST: Регистр {B} = {C}")
+        if B < len(registers):  # Проверка, что индекс регистра в допустимом диапазоне
+            registers[B] = C
         else:
-            print(f"Unknown opcode: {opcode}")
+            print(f"Ошибка: индекс регистра {B} выходит за пределы.")
+    
+    elif opcode == 10:  # READ_MEM
+        B, C = args
+        print(f"READ_MEM: Регистр {B} = Память[{C}] = {memory[C]}")
+        if B < len(registers) and C < len(memory):  # Проверка индексов
+            registers[B] = memory[C]
+        else:
+            print(f"Ошибка: индекс памяти {C} или регистра {B} выходит за пределы.")
+    
+    elif opcode == 12:  # WRITE_MEM
+        B, C, D = args
+        print(f"WRITE_MEM: Память[{B + registers[C]}] = Регистр[{D}] = {registers[D]}")
+        if B + registers[C] < len(memory) and D < len(registers):  # Проверка индексов
+            memory[B + registers[C]] = registers[D]
+        else:
+            print(f"Ошибка: индексы памяти или регистров {B}, {C}, {D} выходят за пределы.")
+    
+    elif opcode == 14:  # MODULO
+        B, C, D, E = args
+        print(f"MODULO: Память[{B + registers[C]}] = Память[{C + registers[D]}] % Регистр[{E}]")
+        if B + registers[C] < len(memory) and D < len(registers) and E < len(registers):
+            result = memory[C + registers[D]] % registers[E]
+            memory[B + registers[C]] = result
+        else:
+            print(f"Ошибка: индексы памяти или регистров {B}, {C}, {D}, {E} выходят за пределы.")
+    else:
+        print(f"Ошибка: неизвестный opcode {opcode} с аргументами {args}")
 
-    def save_memory(self, start, end, output_file):
-        with open(output_file, 'w', newline='') as outfile:
-            writer = csv.writer(outfile)
-            writer.writerow(["Address", "Value"])
-            for i in range(start, end + 1):
-                writer.writerow([i, self.memory[i]])
-
-def interpret(input_file, output_file, memory_range):
-    vm = VirtualMachine()
-    with open(input_file, 'rb') as binfile:
-        chunk_number = 1
+def interpret(input_file, result_file, memory_range):
+    memory = [0] * 1024  # Память, размер 1024 ячейки
+    registers = [0] * 64  # Регистр, размер 64 регистра
+    
+    with open(input_file, 'rb') as infile:
         while True:
-            opcode_byte = binfile.read(1)
-            if not opcode_byte:
-                break  # Конец файла
-
-            opcode = opcode_byte[0]
-            print(f"Executing opcode: {opcode} (Chunk {chunk_number})")
-
+            byte = infile.read(1)
+            if not byte:
+                break
+            opcode = ord(byte)
+            print(f"Чтение opcode: {opcode}")
+            
+            # Инициализируем args в зависимости от opcode
             if opcode == 6:  # LOAD_CONST
-                args_bytes = binfile.read(6)  # 2 байта для b, 4 байта для c
-                if len(args_bytes) < 6:
-                    raise ValueError(f"Incomplete LOAD_CONST command at chunk {chunk_number}")
-                b, c = struct.unpack(">HI", args_bytes)
-                vm.execute(opcode, (b, c))
+                args = struct.unpack(">B I", infile.read(5))
             elif opcode == 10:  # READ_MEM
-                args_bytes = binfile.read(4)  # 2 байта для b, 2 байта для c
-                if len(args_bytes) < 4:
-                    raise ValueError(f"Incomplete READ_MEM command at chunk {chunk_number}")
-                b, c = struct.unpack(">HH", args_bytes)
-                vm.execute(opcode, (b, c))
+                args = struct.unpack(">B H", infile.read(3))
             elif opcode == 12:  # WRITE_MEM
-                args_bytes = binfile.read(4)  # 2 байта для b, 1 байт для c, 1 байт для d
-                if len(args_bytes) < 4:
-                    raise ValueError(f"Incomplete WRITE_MEM command at chunk {chunk_number}")
-                b, c, d = struct.unpack(">HBB", args_bytes)
-                vm.execute(opcode, (b, c, d))
+                args = struct.unpack(">H B B", infile.read(4))
             elif opcode == 14:  # MODULO
-                args_bytes = binfile.read(5)  # 2 байта для b, 1 байт для c, 1 байт для d, 1 байт для e
-                if len(args_bytes) < 5:
-                    raise ValueError(f"Incomplete MODULO command at chunk {chunk_number}")
-                b, c, d, e = struct.unpack(">HBBB", args_bytes)
-                vm.execute(opcode, (b, c, d, e))
+                args = struct.unpack(">H B B B", infile.read(5))
             else:
-                raise ValueError(f"Unknown opcode {opcode} at chunk {chunk_number}")
+                print(f"Ошибка: неизвестный opcode {opcode}. Пропускаем...")
+                continue  # Пропускаем неизвестный opcode
+            
+            # Выполняем команду
+            execute_command(opcode, args, memory, registers)
+    
+    # Сохраняем память в файл
+    with open(result_file, 'w') as outfile:
+        outfile.write("Address,Value\n")
+        for i in range(memory_range[0], memory_range[1] + 1):
+            if i < len(memory):  # Проверка, что индекс памяти в допустимом диапазоне
+                outfile.write(f"{i},{memory[i]}\n")
+            else:
+                print(f"Ошибка: индекс памяти {i} выходит за пределы.")
 
-            chunk_number += 1
-
-    start, end = map(int, memory_range.split("-"))
-    vm.save_memory(start, end, output_file)
-    print(f"Memory from {start} to {end} saved to {output_file}.")
-
-def main():
-    if len(sys.argv) != 4:
-        print("Usage:")
-        print("  python vm.py <input_bin> <output_csv> <memory_range>")
-        print("Example:")
-        print("  python vm.py output.bin memory_dump.csv 0-50")
-        sys.exit(1)
-
-    input_file = sys.argv[1]
-    output_file = sys.argv[2]
-    memory_range = sys.argv[3]
-
-    # Диагностический вывод всего бинарного файла
-    with open(input_file, 'rb') as f:
-        content = f.read()
-        print(f"Full binary file content: {content.hex()}")
-
-    interpret(input_file, output_file, memory_range)
-
+# Главная функция для запуска интерпретатора
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Interpreter for UVM (Virtual Machine).")
+    parser.add_argument("input_file", help="Path to the input binary file")
+    parser.add_argument("result_file", help="Path to the result CSV file")
+    parser.add_argument("start_address", type=int, help="Start address of the memory range")
+    parser.add_argument("end_address", type=int, help="End address of the memory range")
+    args = parser.parse_args()
+    
+    interpret(args.input_file, args.result_file, (args.start_address, args.end_address))

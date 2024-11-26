@@ -1,4 +1,4 @@
-from assembler import assemble_csv
+from assembler import assemble
 from interpreter import interpret
 import csv
 import os
@@ -12,7 +12,8 @@ def generate_csv_for_modulo(vector1, vector2, input_csv):
     
     with open(input_csv, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(["Command", "Arg1", "Arg2", "Arg3", "Arg4"])
+        # Убираем строку с заголовками
+        # writer.writerow(["Command", "Arg1", "Arg2", "Arg3", "Arg4"])  # Заголовок можно удалить
         
         # Генерация команд для загрузки значений в регистры
         for i in range(6):
@@ -42,6 +43,9 @@ def main():
     vector1 = [15, 25, 35, 45, 55, 65]
     vector2 = [5, 10, 7, 6, 4, 8]
 
+    # Ожидаемые результаты: остатки от деления для каждого элемента
+    expected_result = [15 % 5, 25 % 10, 35 % 7, 45 % 6, 55 % 4, 65 % 8]
+
     # Файлы
     input_csv = "input_vectors.csv"
     output_bin = "output.bin"
@@ -55,7 +59,7 @@ def main():
 
     # Ассемблирование
     print("Assembling commands...")
-    assemble_csv(input_csv, output_bin, log_csv)
+    assemble(input_csv, log_csv)  # Теперь вызываем assemble вместо assemble_csv
 
     # Интерпретация
     print("Interpreting binary file...")
@@ -68,6 +72,10 @@ def main():
     print("Vector 1:", vector1)
     print("Vector 2:", vector2)
     print("Result Vector:", result_vector)
+
+    # Проверка через assert
+    assert result_vector == expected_result, f"Test failed! Expected: {expected_result}, Got: {result_vector}"
+    print("Test passed! The result is correct.")
 
     # Удаление временных файлов (опционально)
     for file in [input_csv, output_bin, log_csv, memory_dump]:
